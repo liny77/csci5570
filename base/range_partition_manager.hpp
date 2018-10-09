@@ -47,8 +47,9 @@ class RangePartitionManager : public AbstractPartitionManager {
                       toAdd.second = third_party::SArray<double>();
                       resultMap[server_thread_ids_[i]] = toAdd;
                   }
-                  resultMap.find(server_thread_ids_[i])->second.first.push_back(key);
-                  resultMap.find(server_thread_ids_[i])->second.second.push_back(value);
+                  auto found = resultMap.find(server_thread_ids_[i]);
+                  found->second.first.push_back(key);
+                  found->second.second.push_back(value);
                   break;
               }
           }

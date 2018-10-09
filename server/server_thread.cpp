@@ -5,8 +5,8 @@
 namespace csci5570 {
 
 void ServerThread::RegisterModel(uint32_t model_id, std::unique_ptr<AbstractModel>&& model) {
-    // insert if key is not existed, otherwise do nothing
-    models_.insert(std::make_pair(model_id, std::move(model)));
+    // insert model, if existed update model
+    models_[model_id] = std::move(model);
 }
 
 AbstractModel* ServerThread::GetModel(uint32_t model_id) {
@@ -30,6 +30,9 @@ void ServerThread::Main() {
                 break;
             case Flag::kGet:
                 model->Get(msg);
+                break;
+            case Flag::kResetWorkerInModel:
+                model->ResetWorker(msg);
                 break;
         }
     }
