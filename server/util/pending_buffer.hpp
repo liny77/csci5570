@@ -20,6 +20,9 @@ class PendingBuffer {
    * Return the number of pending requests at the specific progress
    */
   virtual int Size(const int progress);
+
+//  private:
+  std::map<int, std::vector<Message> > buffer_map;
 };
 
 }  // namespace csci5570
