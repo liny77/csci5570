@@ -20,6 +20,7 @@ struct Info {
   ThreadsafeQueue<Message>* send_queue;
   std::map<uint32_t, AbstractPartitionManager*> partition_manager_map;
   AbstractCallbackRunner* callback_runner;
+
   std::string DebugString() const {
     std::stringstream ss;
     ss << "thread_id: " << thread_id << " worker_id: " << worker_id;
@@ -34,7 +35,8 @@ struct Info {
    */
   template <typename Val>
   KVClientTable<Val> CreateKVClientTable(uint32_t table_id) const {
-    // TODO
+    const auto partition_manager = partition_manager_map.at(worker_id);// not found will throw exception
+    return KVClientTable<Val>(thread_id, table_id, send_queue, partition_manager, callback_runner);
   }
 };
 
