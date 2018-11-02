@@ -22,7 +22,10 @@ void SimpleIdMapper::Init(int num_server_threads_per_node) {
   std::vector<uint32_t> server_tids;
   std::vector<uint32_t> worker_helper_tids;
   server_tids.resize(num_server_threads_per_node);
-  worker_helper_tids.resize(kMaxBgThreadsPerNode - kWorkerHelperThreadId);
+  // worker_helper_tids.resize(kMaxBgThreadsPerNode - kWorkerHelperThreadId);
+  
+  // for simplication, only one worker thread on each process for now
+  worker_helper_tids.resize(1);
 
   for (auto node : nodes_) {
     for (uint32_t i = 0; i < server_tids.size(); ++i) {

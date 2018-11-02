@@ -16,25 +16,36 @@
 namespace csci5570 {
 
 void Engine::StartEverything(int num_server_threads_per_node) {
-  // TODO
+  // id mapper
+  
+  // mailbox
+  
+  // sender
+  
+  // serverthreads, workerthreads
+  
 }
 void Engine::CreateIdMapper(int num_server_threads_per_node) {
-  // TODO
+  id_mapper_.reset(new SimpleIdMapper(node_, nodes_));
+  id_mapper_->Init(num_server_threads_per_node);
 }
 void Engine::CreateMailbox() {
-  // TODO
+  const auto node_const = node_;
+  const auto nodes_const = nodes_;
+  mailbox_.reset(new Mailbox(node_const, nodes_const, id_mapper_.get()));
 }
 void Engine::StartServerThreads() {
-  // TODO
+
 }
 void Engine::StartWorkerThreads() {
-  // TODO
+  // TODO implement worker thread
 }
 void Engine::StartMailbox() {
-  // TODO
+  mailbox_->Start();
 }
 void Engine::StartSender() {
-  // TODO
+  sender_.reset(new Sender(mailbox_.get()));
+  sender_->Start();
 }
 
 void Engine::StopEverything() {

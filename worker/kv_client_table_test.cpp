@@ -116,14 +116,20 @@ class TestKVClientTable : public testing::Test {
 TEST_F(TestKVClientTable, Init) {
   ThreadsafeQueue<Message> queue;
   FakePartitionManager manager({0, 1}, 4);
-  FakeCallbackRunner callback_runner;
+
+  //FakeCallbackRunner callback_runner;
+  CallbackRunner callback_runner;
+
   KVClientTable<double> table(kTestAppThreadId, kTestModelId, &queue, &manager, &callback_runner);
 }
 
 TEST_F(TestKVClientTable, Add) {
   ThreadsafeQueue<Message> queue;
   FakePartitionManager manager({0, 1}, 4);
-  FakeCallbackRunner callback_runner;
+
+  //FakeCallbackRunner callback_runner;
+  CallbackRunner callback_runner;
+
   KVClientTable<double> table(kTestAppThreadId, kTestModelId, &queue, &manager, &callback_runner);
 
   std::vector<Key> keys = {3, 4, 5, 6};
@@ -167,7 +173,10 @@ TEST_F(TestKVClientTable, Add) {
 TEST_F(TestKVClientTable, Get) {
   ThreadsafeQueue<Message> queue;
   FakePartitionManager manager({0, 1}, 4);
-  FakeCallbackRunner callback_runner;
+
+  //FakeCallbackRunner callback_runner;
+  CallbackRunner callback_runner;
+  
   std::thread th([&queue, &manager, &callback_runner]() {
     KVClientTable<double> table(kTestAppThreadId, kTestModelId, &queue, &manager, &callback_runner);
     std::vector<Key> keys = {3, 4, 5, 6};
