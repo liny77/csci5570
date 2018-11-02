@@ -16,14 +16,12 @@
 namespace csci5570 {
 
 void Engine::StartEverything(int num_server_threads_per_node) {
-  // id mapper
-  
-  // mailbox
-  
-  // sender
-  
-  // serverthreads, workerthreads
-  
+  CreateIdMapper(num_server_threads_per_node);
+  CreateMailbox();
+  StartSender();
+  StartServerThreads();
+  StartWorkerThreads();
+  StartMailbox();
 }
 void Engine::CreateIdMapper(int num_server_threads_per_node) {
   id_mapper_.reset(new SimpleIdMapper(node_, nodes_));
@@ -35,10 +33,22 @@ void Engine::CreateMailbox() {
   mailbox_.reset(new Mailbox(node_const, nodes_const, id_mapper_.get()));
 }
 void Engine::StartServerThreads() {
-
+  auto tids = id_mapper_->GetServerThreadsForId(node_.id);
+  server_thread_group_.reserve(tids.size());
+  for (auto tid : tids) {
+    auto server_thread = std::unique_ptr<ServerThread>(new ServerThread(tid));
+    mailbox_->RegisterQueue(tid, server_thread->GetWorkQueue());
+    server_thread->Start();
+    server_thread_group_.push_back(std::move(server_thread));
+  }
 }
 void Engine::StartWorkerThreads() {
-  // TODO implement worker thread
+  callback_runner_.reset(new CallbackRunner());
+  // only one worker helper thread
+  worker_thread_.reset(new WorkerHelperThread(id_mapper_->GetWorkerHelperThreadsForId(node_.id)[0], 
+                                    dynamic_cast<CallbackRunner*>(callback_runner_.get())));
+  mailbox_->RegisterQueue(worker_thread_->GetId(), worker_thread_->GetWorkQueue());
+  worker_thread_->Start();
 }
 void Engine::StartMailbox() {
   mailbox_->Start();
@@ -49,31 +59,58 @@ void Engine::StartSender() {
 }
 
 void Engine::StopEverything() {
-  // TODO
+  StopSender();
+  StopMailbox();
+  StopServerThreads();
+  StopWorkerThreads();
 }
 void Engine::StopServerThreads() {
-  // TODO
+  for (int i = 0; i < server_thread_group_.size(); ++i) {
+    server_thread_group_[i]->Stop();
+  }
 }
 void Engine::StopWorkerThreads() {
-  // TODO
+  worker_thread_->Stop();
 }
 void Engine::StopSender() {
-  // TODO
+  sender_->Stop();
 }
 void Engine::StopMailbox() {
-  // TODO
+  Barrier();
+  mailbox_->Stop();
 }
 
 void Engine::Barrier() {
-  // TODO
+  mailbox_->Barrier();
 }
 
 WorkerSpec Engine::AllocateWorkers(const std::vector<WorkerAlloc>& worker_alloc) {
-  // TODO
+  WorkerSpec worker_spec(worker_alloc);
+  for (auto alloc : worker_alloc) {
+    auto worker_ids = worker_spec.GetNodeToWorkers()[alloc.node_id];
+    for (int i = 0; i < alloc.num_workers; ++i) {
+      auto thread_id = id_mapper_->AllocateWorkerThread(alloc.node_id);
+      //thread_id may be -1 --- unsuccess
+      worker_spec.InsertWorkerIdThreadId(worker_ids[i], thread_id);
+    }
+  }
+  return worker_spec;
 }
 
 void Engine::InitTable(uint32_t table_id, const std::vector<uint32_t>& worker_ids) {
-  // TODO
+  // Message msg;
+  // msg.meta.flag = Flag::kResetWorkerInModel;
+  // msg.meta.model_id = table_id;
+  // msg.meta.sender = worker_ids[0];
+
+  // msg.AddData(third_party::SArray<uint32_t>(worker_ids));
+
+  // auto server_ids = GetServerThreadIds();
+  // for (auto sid : server_ids) {
+  //   msg.meta.recver = sid;
+  //   sender_->GetMessageQueue()->Push(msg);
+  // }
+
 }
 
 void Engine::Run(const MLTask& task) {
@@ -81,7 +118,7 @@ void Engine::Run(const MLTask& task) {
 }
 
 void Engine::RegisterPartitionManager(uint32_t table_id, std::unique_ptr<AbstractPartitionManager> partition_manager) {
-  // TODO
+  partition_manager_map_[table_id] = std::move(partition_manager);
 }
 
 }  // namespace csci5570
