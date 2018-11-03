@@ -13,6 +13,13 @@
 #include "worker/abstract_callback_runner.hpp"
 #include "worker/worker_thread.hpp"
 
+#include "server/map_storage.hpp"
+#include "server/consistency/asp_model.hpp"
+#include "server/consistency/bsp_model.hpp"
+#include "server/consistency/ssp_model.hpp"
+#include "base/range_partition_manager.hpp"
+
+
 namespace csci5570 {
 
 enum class ModelType { SSP, BSP, ASP };
@@ -87,7 +94,32 @@ class Engine {
   template <typename Val>
   uint32_t CreateTable(std::unique_ptr<AbstractPartitionManager> partition_manager, ModelType model_type,
                        StorageType storage_type, int model_staleness = 0) {
-    // TODO
+    auto model_id = model_count_++;
+    RegisterPartitionManager(model_id, std::move(partition_manager));
+
+    for (int i = 0; i < server_thread_group_.size(); ++i) {
+      std::unique_ptr<AbstractStorage> storage;
+      switch (storage_type) {
+        case StorageType::Map:
+          storage.reset(new MapStorage<Val>());
+          break;
+      }
+
+      std::unique_ptr<AbstractModel> model;
+      switch (model_type) {
+        case ModelType::SSP:
+          model.reset(new SSPModel(model_id, std::move(storage), model_staleness, sender_->GetMessageQueue()));
+          break;
+        case ModelType::BSP:
+          model.reset(new BSPModel(model_id, std::move(storage), sender_->GetMessageQueue()));
+          break;
+        case ModelType::ASP:
+          model.reset(new ASPModel(model_id, std::move(storage), sender_->GetMessageQueue()));
+          break;
+      }
+      server_thread_group_[i]->RegisterModel(model_id, std::move(model));
+    }
+    return model_id;
   }
 
   /**
@@ -101,8 +133,11 @@ class Engine {
    * @return                    the created table(model) id
    */
   template <typename Val>
-  uint32_t CreateTable(ModelType model_type, StorageType storage_type, int model_staleness = 0) {
-    // TODO
+  uint32_t CreateTable(const std::vector<third_party::Range>& ranges, ModelType model_type, StorageType storage_type, int model_staleness = 0) {
+    std::unique_ptr<AbstractPartitionManager> partition_manager;
+    auto local_server_tids = id_mapper_->GetServerThreadsForId(node_.id);
+    partition_manager.reset(new RangePartitionManager(local_server_tids, ranges));
+    return CreateTable<Val>(std::move(partition_manager), model_type, storage_type, model_staleness);
   }
 
   /**

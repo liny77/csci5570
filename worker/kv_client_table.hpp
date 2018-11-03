@@ -34,10 +34,36 @@ class KVClientTable {
         model_id_(model_id),
         sender_queue_(sender_queue),
         partition_manager_(partition_manager),
-        callback_runner_(callback_runner){};
+        callback_runner_(callback_runner) {};
 
   // ========== API ========== //
-  void Clock();
+  void Clock(const std::vector<Key>& keys) {
+    std::vector<std::pair<int, AbstractPartitionManager::Keys> > sliced;
+    partition_manager_->Slice(AbstractPartitionManager::Keys(keys), &sliced);
+    Message msg;
+    msg.meta.sender = app_thread_id_;
+    msg.meta.model_id = model_id_;
+    msg.meta.flag = Flag::kClock;
+    for (auto piece : sliced) {
+      msg.meta.recver = piece.first;
+      sender_queue_->Push(msg);
+    }
+  }
+  void ResetWorkerInModel(const std::vector<Key>& keys) {
+    std::vector<std::pair<int, AbstractPartitionManager::Keys> > sliced;
+    partition_manager_->Slice(AbstractPartitionManager::Keys(keys), &sliced);
+    for (auto piece : sliced) {
+      Message msg;
+      msg.meta.sender = app_thread_id_;
+      msg.meta.model_id = model_id_;
+      msg.meta.flag = Flag::kResetWorkerInModel;
+      msg.meta.recver = piece.first;
+      msg.AddData(piece.second);
+      sender_queue_->Push(msg);
+    }
+    callback_runner_->NewRequest(app_thread_id_, model_id_, sliced.size());
+    callback_runner_->WaitRequest(app_thread_id_, model_id_);
+  }
   // vector version
   void Add(const std::vector<Key>& keys, const std::vector<Val>& vals) {
     Add(third_party::SArray<Key>(keys), third_party::SArray<Val>(vals));
@@ -48,9 +74,7 @@ class KVClientTable {
     callback_runner_->RegisterRecvHandle(app_thread_id_, model_id_,
       [vals](Message &msg) {
         third_party::SArray<Val> temp(msg.data[1]);
-        int origin_size = vals->size();
-        vals->resize(origin_size + temp.size());
-        std::copy(temp.begin(), temp.end(), vals->begin() + origin_size);
+        vals->insert(vals->end(), temp.begin(), temp.end());
       });
     callback_runner_->RegisterRecvFinishHandle(app_thread_id_, model_id_, []{});
     for (auto piece : sliced) {
@@ -104,6 +128,7 @@ class KVClientTable {
   // ========== API ========== //
 
  private:
+
   uint32_t app_thread_id_;  // identifies the user thread
   uint32_t model_id_;       // identifies the model on servers
 

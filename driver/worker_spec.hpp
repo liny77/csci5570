@@ -52,6 +52,11 @@ class WorkerSpec {
    */
   void InsertWorkerIdThreadId(uint32_t worker_id, uint32_t thread_id);
 
+  // add
+  const std::map<uint32_t, uint32_t>& GetThreadToWorker() {
+    return thread_to_worker_;
+  }
+
  private:
   /**
    * Initiates the worker specification with the specified allocation

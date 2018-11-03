@@ -40,14 +40,14 @@ void WorkerSpec::InsertWorkerIdThreadId(uint32_t worker_id, uint32_t thread_id) 
 
 void WorkerSpec::Init(const std::vector<WorkerAlloc>& worker_alloc) {
   std::vector<uint32_t> workers;
-  for (auto ele : worker_alloc) {
-    workers.resize(ele.num_workers);
-    for (int i = 0; i < ele.num_workers; ++i) {
-      worker_to_node_[num_workers_] = ele.node_id;
+  for (auto alloc : worker_alloc) {
+    workers.resize(alloc.num_workers);
+    for (int i = 0; i < workers.size(); ++i) {
+      worker_to_node_[num_workers_] = alloc.node_id;
       workers[i] = num_workers_;
       num_workers_++;
     }
-    node_to_workers_[ele.node_id] = workers;
+    node_to_workers_[alloc.node_id] = workers;
     workers.clear();
   }
 }

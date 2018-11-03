@@ -215,10 +215,12 @@ TEST_F(TestKVClientTable, Get) {
   Message r1, r2;
   third_party::SArray<Key> r1_keys{3};
   third_party::SArray<double> r1_vals{0.1};
+  r1.meta.flag = Flag::kGet;
   r1.AddData(r1_keys);
   r1.AddData(r1_vals);
   third_party::SArray<Key> r2_keys{4, 5, 6};
   third_party::SArray<double> r2_vals{0.4, 0.2, 0.3};
+  r2.meta.flag = Flag::kGet;
   r2.AddData(r2_keys);
   r2.AddData(r2_vals);
   callback_runner.AddResponse(kTestAppThreadId, kTestModelId, r1);

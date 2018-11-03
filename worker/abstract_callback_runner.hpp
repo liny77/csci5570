@@ -48,46 +48,43 @@ class CallbackRunner: public AbstractCallbackRunner {
     }
     void NewRequest(uint32_t app_thread_id, uint32_t model_id, uint32_t expected_responses) {
       trackers_[app_thread_id][model_id] = {expected_responses, 0};
-      if (mus_.find(app_thread_id) == mus_.end()) {
-        mus_[app_thread_id] = std::move(std::unique_ptr<std::mutex>(new std::mutex()));
-      }
-      if (conds_.find(app_thread_id) == conds_.end()) {
-        conds_[app_thread_id] = std::move(std::unique_ptr<std::condition_variable>(new std::condition_variable()));
-      }
     }
     void WaitRequest(uint32_t app_thread_id, uint32_t model_id) {
-      std::unique_lock<std::mutex> lk(*mus_[app_thread_id]);
-      conds_[app_thread_id]->wait(lk, [this, app_thread_id, model_id] {
-          auto &tracker = trackers_[app_thread_id][model_id];
+      std::unique_lock<std::mutex> lk(mu_);
+      cond_.wait(lk, [this, app_thread_id, model_id] {
+          auto tracker = trackers_[app_thread_id][model_id];
           return tracker.first == tracker.second;
         });
     }
     void AddResponse(uint32_t app_thread_id, uint32_t model_id, Message& msg) {
       bool recv_finish = false;
-      auto &mu = *mus_[app_thread_id];
       auto &tracker = trackers_[app_thread_id][model_id];
       {
-        std::lock_guard<std::mutex> lk(mu);
+        std::lock_guard<std::mutex> lk(mu_);
         recv_finish = tracker.first == tracker.second + 1 ? true : false;
       }
-      recv_handles_[app_thread_id][model_id](msg);
+
+      if (msg.meta.flag == Flag::kGet) {
+        recv_handles_[app_thread_id][model_id](msg);
+      } else if (msg.meta.flag == Flag::kResetWorkerInModel) printf("kResetWorkerInModel\n");
+
       if (recv_finish) {
-        recv_finish_handles_[app_thread_id][model_id]();
+        if (msg.meta.flag == Flag::kGet) recv_finish_handles_[app_thread_id][model_id]();
       }
       {
-        std::lock_guard<std::mutex> lk(mu);
+        std::lock_guard<std::mutex> lk(mu_);
         tracker.second += 1;
         if (recv_finish) {
-          conds_[app_thread_id]->notify_all();
+          cond_.notify_all();
         }
       }
     }
   private:
+    std::mutex mu_;// lockable obj
+    std::condition_variable cond_;
     // app_thread_id(user thread)   model_id
     std::map<uint32_t, std::map<uint32_t, std::function<void(Message&)>>> recv_handles_;
     std::map<uint32_t, std::map<uint32_t, std::function<void()>>> recv_finish_handles_;
-    std::map<uint32_t, std::unique_ptr<std::mutex>> mus_;
-    std::map<uint32_t, std::unique_ptr<std::condition_variable>> conds_;
     std::map<uint32_t, std::map<uint32_t, std::pair<uint32_t, uint32_t>>> trackers_;
 };
 

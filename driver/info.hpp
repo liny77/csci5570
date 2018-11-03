@@ -35,7 +35,7 @@ struct Info {
    */
   template <typename Val>
   KVClientTable<Val> CreateKVClientTable(uint32_t table_id) const {
-    const auto partition_manager = partition_manager_map.at(worker_id);// not found will throw exception
+    const auto partition_manager = partition_manager_map.at(table_id);// not found will throw exception
     return KVClientTable<Val>(thread_id, table_id, send_queue, partition_manager, callback_runner);
   }
 };

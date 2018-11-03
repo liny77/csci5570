@@ -87,7 +87,7 @@ void Engine::Barrier() {
 WorkerSpec Engine::AllocateWorkers(const std::vector<WorkerAlloc>& worker_alloc) {
   WorkerSpec worker_spec(worker_alloc);
   for (auto alloc : worker_alloc) {
-    auto worker_ids = worker_spec.GetNodeToWorkers()[alloc.node_id];
+    auto worker_ids = worker_spec.GetLocalWorkers(alloc.node_id);
     for (int i = 0; i < alloc.num_workers; ++i) {
       auto thread_id = id_mapper_->AllocateWorkerThread(alloc.node_id);
       //thread_id may be -1 --- unsuccess
@@ -105,16 +105,28 @@ void Engine::InitTable(uint32_t table_id, const std::vector<uint32_t>& worker_id
 
   // msg.AddData(third_party::SArray<uint32_t>(worker_ids));
 
-  // auto server_ids = GetServerThreadIds();
+  // auto server_ids = id_mapper_->GetServerThreadsForId(node_);
   // for (auto sid : server_ids) {
   //   msg.meta.recver = sid;
   //   sender_->GetMessageQueue()->Push(msg);
   // }
-
 }
 
 void Engine::Run(const MLTask& task) {
-  // TODO
+  auto worker_spec = AllocateWorkers(task.GetWorkerAlloc());
+  auto local_worker_tids = worker_spec.GetLocalThreads(node_.id);
+  auto worker_tid2worker_id = worker_spec.GetThreadToWorker();
+  for (auto tid : local_worker_tids) {
+    Info info;
+    info.send_queue = sender_->GetMessageQueue();
+    info.thread_id = tid;
+    info.worker_id = worker_tid2worker_id[tid];
+    info.callback_runner = callback_runner_.get();
+    for (auto it = partition_manager_map_.begin(); it != partition_manager_map_.end(); ++it) {
+      info.partition_manager_map[it->first] = it->second.get();
+    }
+    task.RunLambda(info);
+  }
 }
 
 void Engine::RegisterPartitionManager(uint32_t table_id, std::unique_ptr<AbstractPartitionManager> partition_manager) {

@@ -16,6 +16,7 @@ AbstractModel* ServerThread::GetModel(uint32_t model_id) {
 }
 
 void ServerThread::Main() {
+    DLOG(INFO) << "Server " << id_ << " is running";
     Message msg;
     while (true) {
         work_queue_.WaitAndPop(&msg);

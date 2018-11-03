@@ -36,7 +36,7 @@ class WorkerHelperThread: public AbstractWorkerThread {
       while (true) {
         work_queue_.WaitAndPop(&msg);
         if (msg.meta.flag == Flag::kExit) break;
-        if (msg.meta.flag == Flag::kGet) OnReceive(msg);
+        if (msg.meta.flag == Flag::kGet || msg.meta.flag == Flag::kResetWorkerInModel) OnReceive(msg);
       }
     }
     void OnReceive(Message& msg) {
