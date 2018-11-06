@@ -24,6 +24,10 @@ class Mailbox : public AbstractMailbox {
   void Stop();
   size_t GetQueueMapSize() const;
   void Barrier();
+  //add
+  void unregisterQueue(uint32_t queue_id) {
+    queue_map_.erase(queue_id);
+  }
 
   // For testing only
   void ConnectAndBind();

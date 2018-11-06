@@ -37,39 +37,24 @@ class KVClientTable {
         callback_runner_(callback_runner) {};
 
   // ========== API ========== //
-  void Clock(const std::vector<Key>& keys) {
-    std::vector<std::pair<int, AbstractPartitionManager::Keys> > sliced;
-    partition_manager_->Slice(AbstractPartitionManager::Keys(keys), &sliced);
+  void Clock() {
+    // send clock msg to every server
+    auto server_ids = partition_manager_->GetServerThreadIds();
     Message msg;
-    msg.meta.sender = app_thread_id_;
-    msg.meta.model_id = model_id_;
     msg.meta.flag = Flag::kClock;
-    for (auto piece : sliced) {
-      msg.meta.recver = piece.first;
+    msg.meta.model_id = model_id_;
+    msg.meta.sender = app_thread_id_;
+    for (auto sid : server_ids) {
+      msg.meta.recver = sid;
       sender_queue_->Push(msg);
     }
-  }
-  void ResetWorkerInModel(const std::vector<Key>& keys) {
-    std::vector<std::pair<int, AbstractPartitionManager::Keys> > sliced;
-    partition_manager_->Slice(AbstractPartitionManager::Keys(keys), &sliced);
-    for (auto piece : sliced) {
-      Message msg;
-      msg.meta.sender = app_thread_id_;
-      msg.meta.model_id = model_id_;
-      msg.meta.flag = Flag::kResetWorkerInModel;
-      msg.meta.recver = piece.first;
-      msg.AddData(piece.second);
-      sender_queue_->Push(msg);
-    }
-    callback_runner_->NewRequest(app_thread_id_, model_id_, sliced.size());
-    callback_runner_->WaitRequest(app_thread_id_, model_id_);
   }
   // vector version
   void Add(const std::vector<Key>& keys, const std::vector<Val>& vals) {
     Add(third_party::SArray<Key>(keys), third_party::SArray<Val>(vals));
   }
   void Get(const std::vector<Key>& keys, std::vector<Val>* vals) {
-    std::vector<std::pair<int, AbstractPartitionManager::Keys> > sliced;
+    std::vector<std::pair<int, AbstractPartitionManager::Keys>> sliced;
     partition_manager_->Slice(AbstractPartitionManager::Keys(keys), &sliced);
     callback_runner_->RegisterRecvHandle(app_thread_id_, model_id_,
       [vals](Message &msg) {
@@ -77,6 +62,9 @@ class KVClientTable {
         vals->insert(vals->end(), temp.begin(), temp.end());
       });
     callback_runner_->RegisterRecvFinishHandle(app_thread_id_, model_id_, []{});
+
+    callback_runner_->NewRequest(app_thread_id_, model_id_, sliced.size());
+    // send request
     for (auto piece : sliced) {
       Message msg;
       msg.meta.sender = app_thread_id_;
@@ -86,12 +74,11 @@ class KVClientTable {
       msg.AddData(piece.second);
       sender_queue_->Push(msg);
     }
-    callback_runner_->NewRequest(app_thread_id_, model_id_, sliced.size());
     callback_runner_->WaitRequest(app_thread_id_, model_id_);
   }
   // sarray version
   void Add(const third_party::SArray<Key>& keys, const third_party::SArray<Val>& vals) {
-    std::vector<std::pair<int,AbstractPartitionManager::KVPairs> > sliced;
+    std::vector<std::pair<int,AbstractPartitionManager::KVPairs>> sliced;
     partition_manager_->Slice(std::make_pair(keys, vals), &sliced);
     for (auto piece : sliced) {
       Message msg;
@@ -105,7 +92,7 @@ class KVClientTable {
     }
   }
   void Get(const third_party::SArray<Key>& keys, third_party::SArray<Val>* vals) {
-    std::vector<std::pair<int, AbstractPartitionManager::Keys> > sliced;
+    std::vector<std::pair<int, AbstractPartitionManager::Keys>> sliced;
     partition_manager_->Slice(keys, &sliced);
     callback_runner_->RegisterRecvHandle(app_thread_id_, model_id_,
       [vals](Message &msg) {
@@ -113,6 +100,8 @@ class KVClientTable {
         vals->append(temp);
       });
     callback_runner_->RegisterRecvFinishHandle(app_thread_id_, model_id_, []{});
+    
+    callback_runner_->NewRequest(app_thread_id_, model_id_, sliced.size());
     for (auto piece : sliced) {
       Message msg;
       msg.meta.sender = app_thread_id_;
@@ -122,7 +111,6 @@ class KVClientTable {
       msg.AddData(piece.second);
       sender_queue_->Push(msg);
     }
-    callback_runner_->NewRequest(app_thread_id_, model_id_, sliced.size());
     callback_runner_->WaitRequest(app_thread_id_, model_id_);
   }
   // ========== API ========== //

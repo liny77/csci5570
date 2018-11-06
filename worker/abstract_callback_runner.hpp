@@ -59,17 +59,14 @@ class CallbackRunner: public AbstractCallbackRunner {
     void AddResponse(uint32_t app_thread_id, uint32_t model_id, Message& msg) {
       bool recv_finish = false;
       auto &tracker = trackers_[app_thread_id][model_id];
+      // check if it is the last msg
       {
         std::lock_guard<std::mutex> lk(mu_);
         recv_finish = tracker.first == tracker.second + 1 ? true : false;
       }
-
-      if (msg.meta.flag == Flag::kGet) {
-        recv_handles_[app_thread_id][model_id](msg);
-      } else if (msg.meta.flag == Flag::kResetWorkerInModel) printf("kResetWorkerInModel\n");
-
+      recv_handles_[app_thread_id][model_id](msg);
       if (recv_finish) {
-        if (msg.meta.flag == Flag::kGet) recv_finish_handles_[app_thread_id][model_id]();
+        recv_finish_handles_[app_thread_id][model_id]();
       }
       {
         std::lock_guard<std::mutex> lk(mu_);
