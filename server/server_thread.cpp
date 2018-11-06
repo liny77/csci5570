@@ -19,7 +19,7 @@ void ServerThread::Main() {
     DLOG(INFO) << "Server " << id_ << " is running";
     Message msg;
     while (true) {
-        work_queue_.WaitAndPop(&msg);
+        GetWorkQueue()->WaitAndPop(&msg);
         if (msg.meta.flag == Flag::kExit) break;
         auto *model = GetModel(msg.meta.model_id);
         switch (msg.meta.flag) {

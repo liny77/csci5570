@@ -21,10 +21,7 @@ class RangePartitionManager : public AbstractPartitionManager {
       for (auto key : keys) {
           for (int i = 0; i < ranges_.size(); ++i) {
               if (ranges_[i].begin() <= key && key < ranges_[i].end()) {//  begin <= key < end
-                  if (resultMap.find(server_thread_ids_[i]) == resultMap.end()) {// server id does not exist
-                      resultMap[server_thread_ids_[i]] = Keys();
-                  }
-                  resultMap.find(server_thread_ids_[i])->second.push_back(key);
+                  resultMap[server_thread_ids_[i]].push_back(key);
                   break;
               }
           }
@@ -41,15 +38,8 @@ class RangePartitionManager : public AbstractPartitionManager {
           double value = kvs.second[k];// get current value
           for (int i = 0; i < ranges_.size(); ++i) {
               if (ranges_[i].begin() <= key && key < ranges_[i].end()) {//  begin <= key < end
-                  if (resultMap.find(server_thread_ids_[i]) == resultMap.end()) {// server id does not exist
-                      KVPairs toAdd;
-                      toAdd.first = Keys();
-                      toAdd.second = third_party::SArray<double>();
-                      resultMap[server_thread_ids_[i]] = toAdd;
-                  }
-                  auto found = resultMap.find(server_thread_ids_[i]);
-                  found->second.first.push_back(key);
-                  found->second.second.push_back(value);
+                  resultMap[server_thread_ids_[i]].first.push_back(key);
+                  resultMap[server_thread_ids_[i]].second.push_back(value);
                   break;
               }
           }
