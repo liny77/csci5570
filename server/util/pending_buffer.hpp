@@ -21,8 +21,8 @@ class PendingBuffer {
    */
   virtual int Size(const int progress);
 
-//  private:
-  std::map<int, std::vector<Message> > buffer_map;
+  private:
+    std::map<int, std::vector<Message>> buffer_map;
 };
 
 }  // namespace csci5570

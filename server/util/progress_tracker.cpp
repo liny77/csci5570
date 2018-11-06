@@ -28,7 +28,7 @@ int ProgressTracker::GetNumThreads() const {
 }
 
 int ProgressTracker::GetProgress(int tid) const {
-  return CheckThreadValid(tid) ? progresses_.find(tid)->second : -1;
+  return CheckThreadValid(tid) ? progresses_.at(tid) : -1;
 }
 
 int ProgressTracker::GetMinClock() const {

@@ -28,7 +28,7 @@ class MapStorage : public AbstractStorage {
     third_party::SArray<Val> reply_vals(typed_keys.size());
 
     // may not find key??
-    for (int i = 0; i < typed_keys.size(); ++i) reply_vals[i] = storage_.find(typed_keys[i])->second;
+    for (int i = 0; i < typed_keys.size(); ++i) reply_vals[i] = storage_[typed_keys[i]];
     return third_party::SArray<char>(reply_vals);
   }
 

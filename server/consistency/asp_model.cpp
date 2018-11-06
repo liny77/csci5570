@@ -7,7 +7,6 @@ ASPModel::ASPModel(uint32_t model_id, std::unique_ptr<AbstractStorage>&& storage
                    ThreadsafeQueue<Message>* reply_queue): model_id_(model_id), storage_(std::move(storage_ptr)),
                                                           reply_queue_(reply_queue) {}
 
-// sender is a thread id?
 void ASPModel::Clock(Message& msg) {
   if (progress_tracker_.CheckThreadValid(msg.meta.sender))
     progress_tracker_.AdvanceAndGetChangedMinClock(msg.meta.sender);
