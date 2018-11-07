@@ -58,6 +58,8 @@ class CallbackRunner: public AbstractCallbackRunner {
     }
     void AddResponse(uint32_t app_thread_id, uint32_t model_id, Message& msg) {
       bool recv_finish = false;
+      // no such request
+      if (trackers_.find(app_thread_id) == trackers_.end()) return;
       auto &tracker = trackers_[app_thread_id][model_id];
       // check if it is the last msg
       {

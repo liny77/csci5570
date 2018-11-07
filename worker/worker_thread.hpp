@@ -29,21 +29,25 @@ class AbstractWorkerThread : public Actor {
 
 class WorkerHelperThread: public AbstractWorkerThread {
   public:
-    WorkerHelperThread(uint32_t worker_id, CallbackRunner *callback_runner): AbstractWorkerThread(worker_id),
+    WorkerHelperThread(uint32_t worker_id, AbstractCallbackRunner *callback_runner): AbstractWorkerThread(worker_id),
                                             callback_runner_(callback_runner) {}
     void Main() {
       Message msg;
       while (true) {
         work_queue_.WaitAndPop(&msg);
         if (msg.meta.flag == Flag::kExit) break;
-        if (msg.meta.flag == Flag::kGet || msg.meta.flag == Flag::kResetWorkerInModel) OnReceive(msg);
+        switch (msg.meta.flag) {
+          case Flag::kGet:
+            OnReceive(msg);
+            break;
+        }
       }
     }
     void OnReceive(Message& msg) {
       callback_runner_->AddResponse(msg.meta.recver, msg.meta.model_id, msg);
     }
   private:
-    CallbackRunner* callback_runner_;
+    AbstractCallbackRunner* callback_runner_;
 };
 
 }  // namespace csci5570

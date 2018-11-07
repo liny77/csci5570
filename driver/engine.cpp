@@ -46,8 +46,7 @@ void Engine::StartWorkerThreads() {
   callback_runner_.reset(new CallbackRunner());
   // only one worker helper thread
   worker_thread_.reset(new WorkerHelperThread(id_mapper_->GetWorkerHelperThreadsForId(node_.id)[0], 
-                                    dynamic_cast<CallbackRunner*>(callback_runner_.get())));
-  mailbox_->RegisterQueue(worker_thread_->GetId(), worker_thread_->GetWorkQueue());
+                                              callback_runner_.get()));
   worker_thread_->Start();
 }
 void Engine::StartMailbox() {
@@ -65,11 +64,21 @@ void Engine::StopEverything() {
   StopWorkerThreads();
 }
 void Engine::StopServerThreads() {
+  Message msg;
+  msg.meta.flag = Flag::kExit;
   for (int i = 0; i < server_thread_group_.size(); ++i) {
+    msg.meta.recver = server_thread_group_[i]->GetId();
+    server_thread_group_[i]->GetWorkQueue()->Push(msg);
     server_thread_group_[i]->Stop();
   }
+  server_thread_group_.clear();
 }
 void Engine::StopWorkerThreads() {
+  Message msg;
+  msg.meta.recver = worker_thread_->GetId();
+  msg.meta.flag = Flag::kExit;
+
+  worker_thread_->GetWorkQueue()->Push(msg);
   worker_thread_->Stop();
 }
 void Engine::StopSender() {
@@ -98,23 +107,33 @@ WorkerSpec Engine::AllocateWorkers(const std::vector<WorkerAlloc>& worker_alloc)
 }
 
 void Engine::InitTable(uint32_t table_id, const std::vector<uint32_t>& worker_ids) {
-  // Message msg;
-  // msg.meta.flag = Flag::kResetWorkerInModel;
-  // msg.meta.model_id = table_id;
-  // msg.meta.sender = worker_ids[0];
-
-  // msg.AddData(third_party::SArray<uint32_t>(worker_ids));
-
-  // auto server_ids = id_mapper_->GetServerThreadsForId(node_);
-  // for (auto sid : server_ids) {
-  //   msg.meta.recver = sid;
-  //   sender_->GetMessageQueue()->Push(msg);
-  // }
+  ThreadsafeQueue<Message> queue;
+  auto init_worker_tid = id_mapper_->AllocateWorkerThread(node_.id);
+  mailbox_->RegisterQueue(init_worker_tid, &queue);
+  Message init_msg;
+  init_msg.meta.flag = Flag::kResetWorkerInModel;
+  init_msg.meta.sender = init_worker_tid;
+  init_msg.meta.model_id = table_id;
+  init_msg.AddData(third_party::SArray<uint32_t>(worker_ids));
+  auto server_ids = id_mapper_->GetAllServerThreads();
+  for (auto s_id : server_ids) {
+    init_msg.meta.recver = s_id;
+    sender_->GetMessageQueue()->Push(init_msg);
+  }
+  while (queue.Size() != server_ids.size());
+  
+  mailbox_->unregisterQueue(init_worker_tid);
+  id_mapper_->DeallocateWorkerThread(node_.id, init_worker_tid);
 }
 
 void Engine::Run(const MLTask& task) {
+  if (!task.IsSetup()) return;
   auto worker_spec = AllocateWorkers(task.GetWorkerAlloc());
   auto local_worker_tids = worker_spec.GetLocalThreads(node_.id);
+  auto tables = task.GetTables();
+  for (auto table : tables) {
+    InitTable(table, local_worker_tids);
+  }
   auto worker_tid2worker_id = worker_spec.GetThreadToWorker();
   for (auto tid : local_worker_tids) {
     Info info;
@@ -125,7 +144,10 @@ void Engine::Run(const MLTask& task) {
     for (auto it = partition_manager_map_.begin(); it != partition_manager_map_.end(); ++it) {
       info.partition_manager_map[it->first] = it->second.get();
     }
-    task.RunLambda(info);
+    // use user thread id, and worker helper thread's queue
+    mailbox_->RegisterQueue(tid, worker_thread_->GetWorkQueue());
+    std::thread udf_thread([&task, info] { task.RunLambda(info); });
+    udf_thread.join();
   }
 }
 
