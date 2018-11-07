@@ -33,7 +33,7 @@ class SimpleIdMapper : public AbstractIdMapper {
    * 1. Do some checking on the <num_server_threads_per_node>, which should be in [1, kWorkerThreadId]
    * 2. For each node of all available nodes
    *    a. update node2server_
-   *    b. update node2worker_ (for simplication, only one worker thread on each process for now)
+   *    b. update node2worker_ (worker_helper?) (for simplication, only one worker thread on each process for now)
    */
   void Init(int num_server_threads_per_node);
 

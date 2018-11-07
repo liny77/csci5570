@@ -7,10 +7,7 @@
 
 namespace csci5570 {
 
-SimpleIdMapper::SimpleIdMapper(Node node, const std::vector<Node>& nodes) {
-  node_ = node;
-  nodes_.assign(nodes.begin(), nodes.end());
-}
+SimpleIdMapper::SimpleIdMapper(Node node, const std::vector<Node>& nodes): node_(node), nodes_(nodes) {}
 
 uint32_t SimpleIdMapper::GetNodeIdForThread(uint32_t tid) {
   return tid / kMaxThreadsPerNode;
@@ -60,12 +57,12 @@ std::vector<uint32_t> SimpleIdMapper::GetWorkerHelperThreadsForId(uint32_t node_
   return node2worker_helper_[node_id];
 }
 std::vector<uint32_t> SimpleIdMapper::GetWorkerThreadsForId(uint32_t node_id) {
-  auto woker_set = node2worker_[node_id];
+  auto &woker_set = node2worker_[node_id];
   return std::vector<uint32_t>(woker_set.begin(), woker_set.end());
 }
 std::vector<uint32_t> SimpleIdMapper::GetAllServerThreads() {
   std::vector<uint32_t> all;
-  for (auto pair : node2server_) all.insert(all.begin(), pair.second.begin(), pair.second.end());
+  for (auto pair : node2server_) all.insert(all.end(), pair.second.begin(), pair.second.end());
   return all;
 }
 

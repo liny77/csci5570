@@ -75,6 +75,7 @@ TEST_F(TestEngine, SimpleTaskMapStorage) {
   // start
   engine.StartEverything();
 
+  // add range
   auto table_id = engine.CreateTable<double>({{0, 10}}, ModelType::SSP, StorageType::Map);  // table 0
   engine.Barrier();
   MLTask task;
@@ -97,7 +98,8 @@ TEST_F(TestEngine, MultipleTasks) {  // simulate multiple instances of engine ru
       // start
       engine.StartEverything();
 
-      auto table_id = engine.CreateTable<double>({{0, 10}, {10, 20}, {20, 30}}, ModelType::SSP, StorageType::Map);
+      // add range
+      auto table_id = engine.CreateTable<double>({{0, 10}}, ModelType::SSP, StorageType::Map);
       engine.Barrier();
       MLTask task;
       // 3 workers on node 0, 2 workers on node 1, 3 workers on node 2
@@ -121,7 +123,8 @@ TEST_F(TestEngine, KVClientTableMapStorage) {
   // start
   engine.StartEverything();
 
-  const auto kTableId = engine.CreateTable<double>({{0, 10}}, ModelType::SSP, StorageType::Map);  // table 0
+  // add range
+  const auto kTableId = engine.CreateTable<double>({{0, 10}, {10, 20}, {20, 30}}, ModelType::SSP, StorageType::Map);  // table 0
   engine.Barrier();
   MLTask task;
   task.SetWorkerAlloc({{0, 3}});  // 3 workers on node 0
@@ -132,10 +135,8 @@ TEST_F(TestEngine, KVClientTableMapStorage) {
     ASSERT_TRUE(info.partition_manager_map.find(kTableId) != info.partition_manager_map.end());
     KVClientTable<double> table(info.thread_id, kTableId, info.send_queue,
                                 info.partition_manager_map.find(kTableId)->second, info.callback_runner);
-    std::vector<Key> keys{1};
-    table.ResetWorkerInModel(keys);
     for (int i = 0; i < 5; ++i) {
-      LOG(INFO) << i;
+      std::vector<Key> keys{1};
       std::vector<double> vals{0.5};
       table.Add(keys, vals);
       std::vector<double> ret;

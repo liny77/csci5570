@@ -35,7 +35,8 @@ int main(int argc, char** argv) {
   engine.StartEverything();
 
   // 1.1 Create table
-  const auto kTableId = engine.CreateTable<double>({{0, 10}}, ModelType::SSP, StorageType::Map);  // table 0
+  // add range
+  const auto kTableId = engine.CreateTable<double>({{0, 10}, {10, 20}, {20, 30}}, ModelType::SSP, StorageType::Map);  // table 0
 
   // 1.2 Load data
   engine.Barrier();
@@ -59,7 +60,7 @@ int main(int argc, char** argv) {
       std::vector<double> vals{0.5};
       table.Add(keys, vals);
 
-      table.Clock(keys);
+      table.Clock();
     }
   });
 

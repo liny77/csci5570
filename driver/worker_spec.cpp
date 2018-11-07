@@ -29,17 +29,13 @@ void WorkerSpec::InsertWorkerIdThreadId(uint32_t worker_id, uint32_t thread_id) 
   worker_to_thread_[worker_id] = thread_id;
   thread_to_worker_[thread_id] = worker_id;
   auto node_id = worker_to_node_[worker_id];
-  auto found = node_to_threads_.find(node_id);
-  if (found == node_to_threads_.end()) {
-    node_to_threads_[node_id] = std::vector<uint32_t>(1, thread_id);
-  } else {
-    found->second.push_back(thread_id);
-  }
+  node_to_threads_[node_id].push_back(thread_id);
   thread_ids_.insert(thread_id);
 }
 
 void WorkerSpec::Init(const std::vector<WorkerAlloc>& worker_alloc) {
   std::vector<uint32_t> workers;
+  num_workers_ = 0;
   for (auto alloc : worker_alloc) {
     workers.resize(alloc.num_workers);
     for (int i = 0; i < workers.size(); ++i) {
@@ -48,7 +44,6 @@ void WorkerSpec::Init(const std::vector<WorkerAlloc>& worker_alloc) {
       num_workers_++;
     }
     node_to_workers_[alloc.node_id] = workers;
-    workers.clear();
   }
 }
 }  // namespace csci5570
