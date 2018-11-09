@@ -30,7 +30,7 @@ class AbstractWorkerThread : public Actor {
 class WorkerHelperThread: public AbstractWorkerThread {
   public:
     WorkerHelperThread(uint32_t worker_id, AbstractCallbackRunner *callback_runner): AbstractWorkerThread(worker_id),
-                                            callback_runner_(callback_runner) {}
+                                            callback_runner_(callback_runner), reset_msg_cnt(0) {}
     void Main() {
       Message msg;
       while (true) {
@@ -40,14 +40,24 @@ class WorkerHelperThread: public AbstractWorkerThread {
           case Flag::kGet:
             OnReceive(msg);
             break;
+          case Flag::kResetWorkerInModel:
+            reset_msg_cnt++;
+            break;
         }
       }
     }
     void OnReceive(Message& msg) {
       callback_runner_->AddResponse(msg.meta.recver, msg.meta.model_id, msg);
     }
+    void resetMsgCounter() {
+      reset_msg_cnt = 0;
+    }
+    int getResetMsgCount() const {
+      return reset_msg_cnt;
+    }
   private:
     AbstractCallbackRunner* callback_runner_;
+    int reset_msg_cnt;
 };
 
 }  // namespace csci5570
