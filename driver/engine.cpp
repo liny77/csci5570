@@ -16,14 +16,14 @@
 namespace csci5570 {
 
 void Engine::StartEverything(int num_server_threads_per_node) {
-  DLOG(INFO) << "Engine: starting everything";
+  DLOG(INFO) << "Engine " << node_.id << ": starting everything";
   CreateIdMapper(num_server_threads_per_node);
   CreateMailbox();
   StartSender();
   StartServerThreads();
   StartWorkerThreads();
   StartMailbox();
-  DLOG(INFO) << "Engine: finishing starting everything";
+  DLOG(INFO) << "Engine " << node_.id << ": finishing starting everything";
 }
 void Engine::CreateIdMapper(int num_server_threads_per_node) {
   id_mapper_.reset(new SimpleIdMapper(node_, nodes_));
@@ -34,7 +34,7 @@ void Engine::CreateMailbox() {
   const auto node_const = node_;
   const auto nodes_const = nodes_;
   mailbox_.reset(new Mailbox(node_const, nodes_const, id_mapper_.get()));
-  DLOG(INFO) << "\tCreate mailbox";
+  DLOG(INFO) << "Engine " << node_.id << ":\tCreate mailbox";
 }
 void Engine::StartServerThreads() {
   auto tids = id_mapper_->GetServerThreadsForId(node_.id);
@@ -45,7 +45,7 @@ void Engine::StartServerThreads() {
     server_thread->Start();
     server_thread_group_.push_back(std::move(server_thread));
   }
-  DLOG(INFO) << "\tStart server threads";
+  DLOG(INFO) << "Engine " << node_.id << ":\tStart server threads";
 }
 void Engine::StartWorkerThreads() {
   callback_runner_.reset(new CallbackRunner());
@@ -53,25 +53,25 @@ void Engine::StartWorkerThreads() {
   worker_helper_thread_.reset(new WorkerHelperThread(id_mapper_->GetWorkerHelperThreadsForId(node_.id)[0], 
                                               callback_runner_.get()));
   worker_helper_thread_->Start();
-  DLOG(INFO) << "\tStart worker helper thread";
+  DLOG(INFO) << "Engine " << node_.id << ":\tStart worker helper thread";
 }
 void Engine::StartMailbox() {
   mailbox_->Start();
-  DLOG(INFO) << "\tStart mail box";
+  DLOG(INFO) << "Engine " << node_.id << ":\tStart mail box";
 }
 void Engine::StartSender() {
   sender_.reset(new Sender(mailbox_.get()));
   sender_->Start();
-  DLOG(INFO) << "\tStart sender";
+  DLOG(INFO) << "Engine " << node_.id << ":\tStart sender";
 }
 
 void Engine::StopEverything() {
-  DLOG(INFO) << "Engine: stop everything";
+  DLOG(INFO) << "Engine " << node_.id << ": stop everything";
   StopSender();
   StopMailbox();
   StopServerThreads();
   StopWorkerThreads();
-  DLOG(INFO) << "Engine: finishing stopping everything";
+  DLOG(INFO) << "Engine " << node_.id << ": finishing stopping everything";
 }
 void Engine::StopServerThreads() {
   Message msg;
@@ -82,7 +82,7 @@ void Engine::StopServerThreads() {
     server_thread_group_[i]->Stop();
   }
   server_thread_group_.clear();
-  DLOG(INFO) << "\tStop server threads";
+  DLOG(INFO) << "Engine " << node_.id << ":\tStop server threads";
 }
 void Engine::StopWorkerThreads() {
   Message msg;
@@ -91,16 +91,16 @@ void Engine::StopWorkerThreads() {
 
   worker_helper_thread_->GetWorkQueue()->Push(msg);
   worker_helper_thread_->Stop();
-  DLOG(INFO) << "\tStop worker helper thread";
+  DLOG(INFO) << "Engine " << node_.id << ":\tStop worker helper thread";
 }
 void Engine::StopSender() {
   sender_->Stop();
-  DLOG(INFO) << "\tStop sender";
+  DLOG(INFO) << "Engine " << node_.id << ":\tStop sender";
 }
 void Engine::StopMailbox() {
   Barrier();
   mailbox_->Stop();
-  DLOG(INFO) << "\tStop mail box";
+  DLOG(INFO) << "Engine " << node_.id << ":\tStop mail box";
 }
 
 void Engine::Barrier() {
@@ -133,7 +133,7 @@ void Engine::InitTable(uint32_t table_id, const std::vector<uint32_t>& worker_id
     sender_->GetMessageQueue()->Push(init_msg);
   }
   while (worker_helper_thread_->getResetMsgCount() != server_ids.size());
-  DLOG(INFO) << "\tFinish initing table";
+  DLOG(INFO) << "Engine " << node_.id << ":\tFinish initing table";
 }
 
 void Engine::Run(const MLTask& task) {
@@ -145,19 +145,26 @@ void Engine::Run(const MLTask& task) {
     InitTable(table, local_worker_tids);
   }
   auto worker_tid2worker_id = worker_spec.GetThreadToWorker();
+  
+  std::vector<std::thread> temp_worker_threads;
   for (auto tid : local_worker_tids) {
     Info info;
     info.send_queue = sender_->GetMessageQueue();
     info.thread_id = tid;
     info.worker_id = worker_tid2worker_id[tid];
     info.callback_runner = callback_runner_.get();
+    DLOG(INFO) << "info: " << info.DebugString();
     for (auto it = partition_manager_map_.begin(); it != partition_manager_map_.end(); ++it) {
       info.partition_manager_map[it->first] = it->second.get();
     }
     // use user thread id, and worker helper thread's queue
     mailbox_->RegisterQueue(tid, worker_helper_thread_->GetWorkQueue());
     std::thread udf_thread([&task, info] { task.RunLambda(info); });
-    udf_thread.join();
+    temp_worker_threads.push_back(std::move(udf_thread));
+    DLOG(INFO) << "Engine " << node_.id << ": start worker thread " << tid;
+  }
+  for (int i = 0; i < temp_worker_threads.size(); ++i) {
+    temp_worker_threads[i].join();
   }
 }
 

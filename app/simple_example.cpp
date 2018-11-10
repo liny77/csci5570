@@ -36,7 +36,7 @@ int main(int argc, char** argv) {
 
   // 1.1 Create table
   // add range
-  const auto kTableId = engine.CreateTable<double>({{0, 10}}, ModelType::ASP, StorageType::Map);  // table 0
+  const auto kTableId = engine.CreateTable<double>({{0, 10}}, ModelType::SSP, StorageType::Map);  // table 0
   
   DLOG(INFO) << "create table";
 
@@ -54,20 +54,17 @@ int main(int argc, char** argv) {
 
     KVClientTable<double> table = info.CreateKVClientTable<double>(kTableId);
 
-    for (int i = 0; i < 1000; ++i) {
-      DLOG(INFO) << i;
+    for (int i = 0; i < 1e5; ++i) {
+      if (i % 1000 == 0) DLOG(INFO) << "worker " << info.thread_id << " i: " << i;
       std::vector<Key> keys{1};
 
       std::vector<double> ret;
       table.Get(keys, &ret);
-      LOG(INFO) << ret[0];
-      DLOG(INFO) << "after get\n";
+      //LOG(INFO) << ret[0];
 
       std::vector<double> vals{0.5};
       table.Add(keys, vals);
-      DLOG(INFO) << "after add\n";
       table.Clock();
-      DLOG(INFO) << "after clock\n";
     }
   });
 
