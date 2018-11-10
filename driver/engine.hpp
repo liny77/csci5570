@@ -17,7 +17,7 @@
 #include "server/consistency/asp_model.hpp"
 #include "server/consistency/bsp_model.hpp"
 #include "server/consistency/ssp_model.hpp"
-#include "base/range_partition_manager.hpp"
+#include "base/hash_partition_manager.h"
 
 
 namespace csci5570 {
@@ -133,10 +133,10 @@ class Engine {
    * @return                    the created table(model) id
    */
   template <typename Val>
-  uint32_t CreateTable(const std::vector<third_party::Range>& ranges, ModelType model_type, StorageType storage_type, int model_staleness = 0) {
+  uint32_t CreateTable(ModelType model_type, StorageType storage_type, int model_staleness = 0) {
     std::unique_ptr<AbstractPartitionManager> partition_manager;
     auto local_server_tids = id_mapper_->GetServerThreadsForId(node_.id);
-    partition_manager.reset(new RangePartitionManager(local_server_tids, ranges));
+    partition_manager.reset(new HashPartitionManager(local_server_tids));
     return CreateTable<Val>(std::move(partition_manager), model_type, storage_type, model_staleness);
   }
 

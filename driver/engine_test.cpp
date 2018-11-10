@@ -76,7 +76,7 @@ TEST_F(TestEngine, SimpleTaskMapStorage) {
   engine.StartEverything();
 
   // add range
-  auto table_id = engine.CreateTable<double>({{0, 10}}, ModelType::SSP, StorageType::Map);  // table 0
+  auto table_id = engine.CreateTable<double>(ModelType::SSP, StorageType::Map);  // table 0
   engine.Barrier();
   MLTask task;
   task.SetWorkerAlloc({{0, 3}});  // 3 workers on node 0
@@ -99,7 +99,7 @@ TEST_F(TestEngine, MultipleTasks) {  // simulate multiple instances of engine ru
       engine.StartEverything();
 
       // add range
-      auto table_id = engine.CreateTable<double>({{0, 10}}, ModelType::SSP, StorageType::Map);
+      auto table_id = engine.CreateTable<double>(ModelType::SSP, StorageType::Map);
       engine.Barrier();
       MLTask task;
       // 3 workers on node 0, 2 workers on node 1, 3 workers on node 2
@@ -124,7 +124,7 @@ TEST_F(TestEngine, KVClientTableMapStorage) {
   engine.StartEverything();
 
   // add range
-  const auto kTableId = engine.CreateTable<double>({{0, 10}, {10, 20}, {20, 30}}, ModelType::SSP, StorageType::Map);  // table 0
+  const auto kTableId = engine.CreateTable<double>(ModelType::SSP, StorageType::Map);  // table 0
   engine.Barrier();
   MLTask task;
   task.SetWorkerAlloc({{0, 3}});  // 3 workers on node 0

@@ -36,7 +36,7 @@ int main(int argc, char** argv) {
 
   // 1.1 Create table
   // add range
-  const auto kTableId = engine.CreateTable<double>({{0, 10}}, ModelType::SSP, StorageType::Map);  // table 0
+  const auto kTableId = engine.CreateTable<double>(ModelType::SSP, StorageType::Map);  // table 0
   
   DLOG(INFO) << "create table";
 
