@@ -6,6 +6,7 @@
 #include "boost/utility/string_ref.hpp"
 
 #include "lib/parser.hpp"
+#include "io/line_input_format.hpp"
 
 namespace csci5570 {
 namespace lib {
@@ -27,8 +28,19 @@ class AbstractDataLoader {
     // 1. Connect to the data source, e.g. HDFS, via the modules in io
     // 2. Extract and parse lines
     // 3. Put samples into datastore
+    // LineInputFormat infmt(url, num_threads, id, coordinator, hostname, hdfs_namenode, hdfs_namenode_port);
+    // LOG(INFO) << "Line input is well prepared";
+    // bool success = true;
+    // int count = 0;
+    // boost::string_ref record;
+    // while (true) {
+    //   success = infmt.next(record);
+    //   if (success == false) break;
+    //   datastore->push_back(parse(record, n_features));
+    //   ++count;
+    // }
+    // LOG(INFO) << "The number of lines in " << url << " is " << count;
   }
-
 };  // class AbstractDataLoader
 
 }  // namespace lib
