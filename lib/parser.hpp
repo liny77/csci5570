@@ -21,14 +21,13 @@ class Parser {
     // hints: you may use boost::tokenizer, std::strtok_r, std::stringstream or any method you like
     // so far we tried all the tree and found std::strtok_r is fastest :)
     Sample sample;
-    sample.x_.resize(n_features, 0);
+    sample.x_.resize(n_features + 1, 0);
     std::stringstream ss;
     ss << std::string(line.begin(), line.end());
     int index, value;
     char colon;
     ss >> sample.y_;
-    while (ss >> index) {
-      ss >> colon >> value;
+    while (ss >> index >> colon >> value) {
       sample.x_[index] = value;
     }
     return sample;
