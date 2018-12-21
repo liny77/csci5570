@@ -36,7 +36,7 @@ int main(int argc, char** argv) {
 
   // 1.1 Create table
   // add range
-  const auto kTableId = engine.CreateTable<double>(ModelType::SSP, StorageType::Map);  // table 0
+  const auto kTableId = engine.CreateTable<double>(ModelType::ASP, StorageType::Map);  // table 0
   
   DLOG(INFO) << "create table";
 
@@ -47,22 +47,22 @@ int main(int argc, char** argv) {
 
   // 2. Start training task
   MLTask task;
-  task.SetWorkerAlloc({{0, 3}});  // 3 workers on node 0
+  task.SetWorkerAlloc({{0, 1}});  // 3 workers on node 0
   task.SetTables({kTableId});     // Use table 0
   task.SetLambda([kTableId](const Info& info) {
     LOG(INFO) << info.DebugString();
 
     KVClientTable<double> table = info.CreateKVClientTable<double>(kTableId);
 
-    for (int i = 0; i < 1e5; ++i) {
+    for (int i = 0; i < 10; ++i) {
       if (i % 1000 == 0) DLOG(INFO) << "worker " << info.thread_id << " i: " << i;
-      std::vector<Key> keys{1};
+      std::vector<Key> keys{info.worker_id};
 
       std::vector<double> ret;
       table.Get(keys, &ret);
-      //LOG(INFO) << ret[0];
+      LOG(INFO) << i << " round " << info.worker_id << " " << ret[0];
 
-      std::vector<double> vals{0.5};
+      std::vector<double> vals{i * 1.0 + info.worker_id};
       table.Add(keys, vals);
       table.Clock();
     }

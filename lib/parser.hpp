@@ -24,11 +24,11 @@ class Parser {
     sample.x_.resize(n_features + 1, 0);
     std::stringstream ss;
     ss << std::string(line.begin(), line.end());
-    int index, value;
+    double index;
     char colon;
     ss >> sample.y_;
-    while (ss >> index >> colon >> value) {
-      sample.x_[index] = value;
+    while (ss >> index >> colon) {
+      ss >> sample.x_[index];
     }
     return sample;
   }
