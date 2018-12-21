@@ -22,9 +22,10 @@ using Parse = std::function<Sample(boost::string_ref, int)>;
 DEFINE_string(config_file, "", "The config file path");
 DEFINE_string(input, "", "The hdfs input url");
 
-double lambda = 0.01;
-double alpha = 0.0001;
+double lambda = 0.001;
+double alpha = 0.001;
 int n_features = 2000;
+int step = 600;// workers num * step must > n_features
 std::string url = "hdfs:///datasets/classification/data3";
 
 // multiplication
@@ -39,7 +40,7 @@ double mul(Record &pt, std::vector<double> &theta) {
 // sigmoid function
 double h(Record &pt, std::vector<double> &theta) {
 	double sum = mul(pt, theta);
-  LOG(INFO) << sum << " " << 1 / (1 + exp(-sum));
+  //LOG(INFO) << sum << " " << 1 / (1 + exp(-sum));
 	return 1 / (1 + exp(-sum));
 }
 
@@ -123,7 +124,7 @@ int main(int argc, char** argv) {
   
   // 2. Start training task
   MLTask task;
-  task.SetWorkerAlloc({{0, 1}});  // 3 workers on node 0
+  task.SetWorkerAlloc({{0, 4}});  // 3 workers on node 0
   task.SetTables({kTableId});     // Use table 0
   task.SetLambda([kTableId, &data](const Info& info) {
     LOG(INFO) << info.DebugString();
@@ -132,9 +133,9 @@ int main(int argc, char** argv) {
 
     // BSP
     int round = 100;
-    int p_start = 0;
-    int p_end = n_features;
-    int batch_size = data.size() * 0.01 + 1;
+    int p_start = info.worker_id * step;
+    int p_end = p_start + step > n_features ? n_features + 1 : p_start + step;
+    int batch_size = data.size() * 0.01 + 1;// avoid 0
     LOG(INFO) << "batch size " << batch_size;
 
     std::vector<Key> all_keys;// parameters index
@@ -142,7 +143,7 @@ int main(int argc, char** argv) {
     std::vector<double> all_parameters;//  real parameters
 
     std::vector<Key> target_keys;// parameters for this worker to update
-    for (int i = p_start; i <= p_end; ++i) target_keys.push_back((Key)i);
+    for (int i = p_start; i < p_end; ++i) target_keys.push_back((Key)i);
     std::vector<double> target_vals(target_keys.size(), 1);// parameters for this worker to update, initial values are all 1
 
     std::vector<int> data_index(batch_size);//  random picked record's index
@@ -161,7 +162,7 @@ int main(int argc, char** argv) {
         }
 
         double current_cost = j(data, data_index, all_parameters);
-        LOG(INFO) << "before " << i << " round Cost: " << current_cost;
+        LOG(INFO) << "worker " << info.worker_id << ":before " << i << " round Cost: " << current_cost;
 
         for (int j = 0; j < target_vals.size(); ++j) {
             target_vals[j] = update_theta_j(data, data_index, all_parameters, p_start + j);
